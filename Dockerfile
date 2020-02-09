@@ -1,12 +1,23 @@
-FROM debian:stretch
+FROM node:12.14-stretch-slim
 
 MAINTAINER buildmaster@rocket.chat
 
-RUN apt-get update \
-	&& apt-get install -y \
-		gpg \
-    && rm -rf /var/lib/apt/lists/*
+RUN set -x \
+ && apt-get update \
+ && apt-get install -y -o Dpkg::Options::="--force-confdef" --no-install-recommends \
+    imagemagick \
+    fontconfig \
+    ca-certificates \
+    curl \
+    gpg \
+    dirmngr \
+ && apt-get clean all \
+ && npm cache clear --force \
+ && groupadd -r rocketchat \
+ && useradd -r -g rocketchat rocketchat
 
+# fix for IPv6 build environments https://rvm.io/rvm/security#ipv6-issues
+RUN echo "disable-ipv6" >> ~/.gnupg/dirmngr.conf
 # gpg: key 4FD08014: public key "Rocket.Chat Buildmaster <buildmaster@rocket.chat>" imported
 RUN gpg --keyserver ha.pool.sks-keyservers.net --recv-keys 0E163286C20D07B9787EBE9FD7F9D0414FD08104
 
@@ -25,21 +36,6 @@ RUN set -ex \
       A48C2BEE680E841632CD4E44F07496B3EB3C1762 \
       B9E2F5981AA6E0CD28160D9FF13993A75599653C \
     ; do \
-    gpg --keyserver pool.sks-keyservers.net --recv-keys "$key"; \
+    gpg --keyserver ha.pool.sks-keyservers.net --recv-keys "$key"; \
     done
 
-ENV NODE_VERSION 12.14.0
-ENV NODE_ENV production
-
-RUN set -x \
- && apt-get update && apt-get install -y curl ca-certificates imagemagick --no-install-recommends \
- && rm -rf /var/lib/apt/lists/* \
- && curl -SLO "https://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION-linux-x64.tar.gz" \
- && curl -SLO "https://nodejs.org/dist/v$NODE_VERSION/SHASUMS256.txt.asc" \
- && gpg --verify SHASUMS256.txt.asc \
- && grep " node-v$NODE_VERSION-linux-x64.tar.gz\$" SHASUMS256.txt.asc | sha256sum -c - \
- && tar -xzf "node-v$NODE_VERSION-linux-x64.tar.gz" -C /usr/local --strip-components=1 \
- && rm "node-v$NODE_VERSION-linux-x64.tar.gz" SHASUMS256.txt.asc \
- && npm cache clear --force \
- && groupadd -g 65533 -r rocketchat \
- && useradd -u 65533 -r -g rocketchat rocketchat
