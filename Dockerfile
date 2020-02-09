@@ -1,4 +1,4 @@
-FROM node:12.14-stretch-slim
+FROM node:12.15-stretch-slim
 
 MAINTAINER buildmaster@rocket.chat
 
